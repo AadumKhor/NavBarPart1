@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'dart:math' as math;
+
 typedef Tabchange = Function(int, bool);
 
 class NavigationBar extends StatefulWidget {
@@ -25,10 +27,112 @@ class NavigationBar extends StatefulWidget {
 }
 
 class _NavigationBarState extends State<NavigationBar> {
+    int _selectedIndex = 0;
+
+  int get selectedIndex => _selectedIndex;
+
+  bool _isAnimationFlag = false;
+
+  bool get isAnimation => _isAnimationFlag;
+
+  set isAnimation(flag) => _isAnimationFlag = flag;
+
+  double _maxTitleWidth = -1.0;
+
+  final textPainter = TextPainter(
+    textDirection: TextDirection.ltr,
+    maxLines: 1,
+    text: TextSpan(
+      text: "",
+      style: TextStyle(fontSize: 14.0),
+    ),
+  );
+
+  @override
+  void initState() {
+    super.initState();
+
+    // 计算最大的width
+    widget.items.forEach((item) {
+      textPainter.text = TextSpan(
+          text: item.title, style: TextStyle(fontSize: 14.0));
+      textPainter.layout();
+      final _width = textPainter.size.width;
+      print("_width:$_width");
+      if (_maxTitleWidth < _width) {
+        _maxTitleWidth = _width;
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Container();
+    final double additionalBottomPadding = math.max(
+        MediaQuery.of(context).padding.bottom - 14.0 / 2.0, 0.0);
+//    print("additionalBottomPadding:$additionalBottomPadding");
+    return Semantics(
+      explicitChildNodes: true,
+      child: Material(
+        elevation: widget.elevation,
+        color: widget.bgcolor,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+              minHeight: kBottomNavigationBarHeight + additionalBottomPadding),
+          child: Material(
+            // Splashes.
+            type: MaterialType.transparency,
+            child: Padding(
+              padding: EdgeInsets.only(bottom: additionalBottomPadding),
+              child: MediaQuery.removePadding(
+                context: context,
+                removeBottom: true,
+                child: _createContainer(_createChilds(_maxTitleWidth)),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
+
+  Widget _createContainer(List<Widget> childs) {
+    return DefaultTextStyle.merge(
+      overflow: TextOverflow.ellipsis,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: childs,
+      ),
+    );
+  }
+
+  List<Widget> _createChilds(double _maxTitleWidth) {
+    _NavigationBarState state = this;
+    List<Widget> childs = [];
+    widget.items.asMap().forEach((index, item) {
+      childs.add(Container(
+        margin: EdgeInsets.fromLTRB(0, 0, 0, 0),
+        child: item.create(index, widget.tabchange, state, _maxTitleWidth),
+      ));
+    });
+//    childs.add(Container(
+//      color: Colors.black,
+//      height: kBottomNavigationBarHeight,
+//      width: 5,
+//    ));
+    return childs;
+  }
+
+  void changeIndex(int index) {
+    if (_selectedIndex != index) {
+      _selectedIndex = index;
+      widget.tabchange(index, true);
+      setState(() {
+        _isAnimationFlag = true;
+      });
+    } else {
+      widget.tabchange(index, false);
+    }
+}
 }
 
 class BottomNaviItem {
@@ -84,16 +188,51 @@ class _BottomNaviItemState extends StatefulWidget {
 
 class __BottomNaviItemStateState extends State<_BottomNaviItemState>
     with AutomaticKeepAliveClientMixin, TickerProviderStateMixin {
-  bool _isOpen = false;
+  bool _isOpen = false; // bool that checkes whether it is already selected
+  bool get isOpen => _isOpen;
+  set isOpen(bool isOpen) {}
 
-  set isOpen(bool isOpen){}
-  
+  AnimationController _controller; // main animation controller
+  Animation<Color> _bgColorAnimation; // animation for the bg color change
+  Animation<Color> _iconColorAnimation; // icon change and its color change
+  Tween<double> _widthTween; // the movement of icons
+  Animation<double> _widthAnimation; // animation for the above movement
+
+  bool get wantKeepAlive =>
+      true; // * preexsting override maybe to keep to alive
+
   @override
-  Widget build(BuildContext context) {
-    return Container();
+  void initState() {
+    super.initState();
+    final mainColor = widget.backgroudColor;
+    _isOpen = (widget.index == 0);
+    _controller = new AnimationController(
+        vsync: this, duration: Duration(milliseconds: 300));
+    _iconColorAnimation = new ColorTween(begin: Colors.black87, end: mainColor)
+        .animate(_controller);
+    _bgColorAnimation = new ColorTween(
+            begin: Colors.transparent, end: mainColor.withOpacity(0.12))
+        .animate(_controller);
+     _widthTween = Tween(begin: 0.0, end: 1.0);
+    _widthAnimation = _widthTween.animate(_controller);
+    _controller.addListener(() {
+      setState(() {});
+    });
+    _controller.addStatusListener((status) {
+//      print("status:$status--controller:$_animationController");
+      if (status == AnimationStatus.completed) {
+        _isOpen = true;
+        widget.parentState.isAnimation = false;
+      } else if (status == AnimationStatus.dismissed) {
+        _isOpen = false;
+        widget.parentState.isAnimation = false;
+      }
+    });
+    _isOpen = widget.index == widget.parentState.selectedIndex;
   }
 
   @override
-  // TODO: implement wantKeepAlive
-  bool get wantKeepAlive => null;
+  Widget build(BuildContext context) {
+    _animationIndex(widget.parentState.selectedIndex);
+  }
 }
