@@ -27,7 +27,7 @@ class NavigationBar extends StatefulWidget {
 }
 
 class _NavigationBarState extends State<NavigationBar> {
-    int _selectedIndex = 0;
+  int _selectedIndex = 0;
 
   int get selectedIndex => _selectedIndex;
 
@@ -54,8 +54,8 @@ class _NavigationBarState extends State<NavigationBar> {
 
     // 计算最大的width
     widget.items.forEach((item) {
-      textPainter.text = TextSpan(
-          text: item.title, style: TextStyle(fontSize: 14.0));
+      textPainter.text =
+          TextSpan(text: item.title, style: TextStyle(fontSize: 14.0));
       textPainter.layout();
       final _width = textPainter.size.width;
       print("_width:$_width");
@@ -67,8 +67,8 @@ class _NavigationBarState extends State<NavigationBar> {
 
   @override
   Widget build(BuildContext context) {
-    final double additionalBottomPadding = math.max(
-        MediaQuery.of(context).padding.bottom - 14.0 / 2.0, 0.0);
+    final double additionalBottomPadding =
+        math.max(MediaQuery.of(context).padding.bottom - 14.0 / 2.0, 0.0);
 //    print("additionalBottomPadding:$additionalBottomPadding");
     return Semantics(
       explicitChildNodes: true,
@@ -132,7 +132,7 @@ class _NavigationBarState extends State<NavigationBar> {
     } else {
       widget.tabchange(index, false);
     }
-}
+  }
 }
 
 class BottomNaviItem {
@@ -213,7 +213,7 @@ class __BottomNaviItemStateState extends State<_BottomNaviItemState>
     _bgColorAnimation = new ColorTween(
             begin: Colors.transparent, end: mainColor.withOpacity(0.12))
         .animate(_controller);
-     _widthTween = Tween(begin: 0.0, end: 1.0);
+    _widthTween = Tween(begin: 0.0, end: 1.0);
     _widthAnimation = _widthTween.animate(_controller);
     _controller.addListener(() {
       setState(() {});
@@ -234,5 +234,81 @@ class __BottomNaviItemStateState extends State<_BottomNaviItemState>
   @override
   Widget build(BuildContext context) {
     _animationIndex(widget.parentState.selectedIndex);
+    Widget child = Container(
+      width: widget.parentState.isAnimation
+          ? _widthAnimation.value * (widget.maxTitleWidth + 6) + 56.0
+          : (isOpen ? (widget.maxTitleWidth + 6) + 56.0 : 56.0),
+      child: new Stack(
+        children: <Widget>[
+          Material(
+            borderRadius: BorderRadius.circular(20.0),
+            color: widget.parentState.isAnimation
+                ? _bgColorAnimation.value
+                : (isOpen
+                    ? widget.backgroudColor.withOpacity(0.12)
+                    : Colors.white),
+            child: Container(
+              width: widget.parentState.isAnimation
+                  ? _widthAnimation.value * (widget.maxTitleWidth + 6) + 56.0
+                  : (isOpen ? (widget.maxTitleWidth + 6) + 56.0 : 56.0),
+              height: 40,
+            ),
+          ),
+          Container(
+            margin: EdgeInsets.fromLTRB(16.0, 10, 0, 10),
+            child: Image.asset(
+              widget.icon,
+              width: 20,
+              height: 20,
+              color: widget.parentState.isAnimation
+                  ? _iconColorAnimation.value
+                  : (isOpen ? widget.backgroudColor : Colors.black87),
+            ),
+          ),
+          Opacity(
+            opacity: widget.parentState.isAnimation
+                ? _widthAnimation.value
+                : (isOpen ? 1.0 : 0.0),
+            child: Container(
+              width: widget.maxTitleWidth,
+              margin: EdgeInsets.fromLTRB(18.0 + 20.0 + 6.0, 12, 0, 0),
+              child: Text(
+                widget.title,
+                maxLines: 1,
+                style: TextStyle(
+                    color: _iconColorAnimation.value, fontSize: 14.0),
+              ),
+            ),
+          )
+        ],
+      ),
+    );
+     return InkResponse(
+      splashColor: widget.backgroudColor.withOpacity(0.15),
+      radius: 28,
+      enableFeedback: false,
+      excludeFromSemantics: false,
+      highlightShape: BoxShape.rectangle,
+      borderRadius: BorderRadius.circular(20),
+      onTap: _click,
+      child: child,
+);
   }
+
+  void _click(){
+    if(_isOpen){
+      widget.tabChange(widget.index , false);
+      return;
+    }
+    widget.parentState.changeIndex(widget.index);
+  }
+  
+  _animationIndex(int index) {
+    bool needOpen = index == widget.index;
+    if (needOpen == true) {
+      _controller.forward();
+    } else {
+      _controller.reverse();
+    }
+}
 }
